@@ -24,7 +24,7 @@ SHEET_NAME = os.environ.get("SHEET_NAME", "Amazon Price Tracker Master")
 
 creds = Credentials.from_service_account_file(SERVICE_FILE, scopes=SCOPES)
 client = gspread.authorize(creds)
-sheet = client.open(SHEET_NAME).worksheet("Data")
+sheet = client.open("1i1eeHJ6iwJFsh1EpfqnxGrHEw6K6pfRZ7QAcMxJCOoA").worksheet("Data")
 
 # Optional: set User‑Agent string to reduce blocking
 HEADERS = {
