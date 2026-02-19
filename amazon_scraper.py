@@ -92,7 +92,7 @@ for i, row in enumerate(records, start=2):  # data starts on row 2
     if title:
         sheet.update_cell(i, 1, title)  # Item Name (A)
     if price is not None:
-        sheet.update_cell(i, 6, price)  # Col F (Current Price £)
+        sheet.update_cell(i, 6, price)  # Col F (Current Price)
         print(f"✅ Row {i} → {title[:40]} … £{price}")
 
     time.sleep(2)  # polite delay
