@@ -18,7 +18,8 @@ import os
 
 
 # === Google Sheets authentication ===
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"
+         "https://www.googleapis.com/auth/drive"]
 SERVICE_FILE = "service_key.json"
 SHEET_NAME = os.environ.get("SHEET_NAME", "Amazon Price Tracker Master")
 
