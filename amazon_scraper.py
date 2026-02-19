@@ -1,8 +1,7 @@
 """
-Amazon Price Tracker (GitHub Actions Ready)
-------------------------------------------
-Scrapes product titles & prices from Amazon
-and updates a Google Sheet (tab: Data).
+Amazon Price Tracker – DEBUG build
+Checks Amazon product pages and updates the Google Sheet.
+Includes partial HTML print for the first product to confirm response content.
 """
 
 import os
@@ -19,11 +18,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-
 SERVICE_FILE = "service_key.json"
-
-# Your Sheet info
-SHEET_ID = "1i1eeHJ6iwJFsh1EpfqnxGrHEw6K6pfRZ7QAcMxJCOoA"   # replace if you duplicate the sheet
+SHEET_ID = "1i1eeHJ6iwJFsh1EpfqnxGrHEw6K6pfRZ7QAcMxJCOoA"   # your Sheet ID
 WORKSHEET_NAME = "Data"
 
 creds = Credentials.from_service_account_file(SERVICE_FILE, scopes=SCOPES)
@@ -31,8 +27,7 @@ client = gspread.authorize(creds)
 sheet = client.open_by_key(SHEET_ID).worksheet(WORKSHEET_NAME)
 print("✅ Connected to Google Sheet")
 
-
-# === Amazon scraping setup ===
+# === Headers (pretend to be a normal browser) ===
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -43,34 +38,36 @@ HEADERS = {
 
 
 def clean_price(text: str):
-    """Extracts numeric value from Amazon price text."""
+    """Extract numeric £ value from text."""
     if not text:
         return None
     m = re.search(r"(\d+(?:\.\d{1,2})?)", text.replace(",", ""))
     return float(m.group(1)) if m else None
 
 
-def get_price_and_title(url):
-    """Fetch title and current price from an Amazon page (Feb 2026 layout)."""
+def get_price_and_title(url, row_index):
+    """Fetch title and price, print sample HTML for one row to debug."""
     if not url or "amazon" not in url.lower():
         return None, None
-if i == 2:  # only for first product to avoid spam
-    print(resp.text[:800])
+
     try:
         resp = requests.get(url, headers=HEADERS, timeout=25)
         resp.raise_for_status()
+
+        # ---- DEBUG: show start of page for first row only ----
+        if row_index == 2:
+            print(f"\n🔍 Sample HTML (first 800 chars from Amazon response)\n{'-'*60}")
+            print(resp.text[:800])
+            print("\n------------------------------------------------------------\n")
+
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # ---------- title ----------
         title_tag = soup.find(id="productTitle")
         title = title_tag.get_text(strip=True) if title_tag else ""
 
-        # ---------- price ----------
-        # Amazon now nests visible prices inside <span class="a-offscreen">£xx.xx</span>
         price_tag = (
-            soup.select_one("span.a-price.aok-align-center span.a-offscreen")  # product boxes
-            or soup.select_one("span.a-price.aok-align-center > span.a-offscreen")
-            or soup.select_one("span[data-a-color='base'] span.a-offscreen")
+            soup.select_one("span.a-price.aok-align-center span.a-offscreen")
+            or soup.select_one("span[data-a-color='price'] span.a-offscreen")
             or soup.select_one("span.a-price > span.a-offscreen")
         )
 
@@ -78,29 +75,30 @@ if i == 2:  # only for first product to avoid spam
         return title, price
 
     except Exception as e:
-        print(f"⚠️ Error scraping {url[:70]} → {e}")
+        print(f"⚠️ Error scraping {url[:70]}: {e}")
         return None, None
 
 
-# === Main update loop ===
-records = sheet.get_all_records()  # assumes headers in row 1
-print(f"🧮  Found {len(records)} rows to check")
+# === Main loop ===
+records = sheet.get_all_records()
+print(f"🧮 Found {len(records)} rows to check")
 
-for i, row in enumerate(records, start=2):  # data starts on row 2
+updated_count = 0
+
+for i, row in enumerate(records, start=2):
     url = row.get("Amazon Link") or ""
     if not url:
         continue
 
-    title, price = get_price_and_title(url)
-    if not title and price is None:
-        continue
+    title, price = get_price_and_title(url, i)
 
     if title:
-        sheet.update_cell(i, 1, title)  # Item Name (A)
+        sheet.update_cell(i, 1, title)  # Item Name
     if price is not None:
-        sheet.update_cell(i, 6, price)  # Col F (Current Price)
-        print(f"✅ Row {i} → {title[:40]} … £{price}")
+        sheet.update_cell(i, 6, price)  # Current Price (£)
+        updated_count += 1
+        print(f"✅ Row {i} → {title[:40]} … £{price}")
 
-    time.sleep(2)  # polite delay
+    time.sleep(2)
 
-print("🎯 All done – Sheet updated successfully.")
+print(f"🎯 All done – {updated_count} rows updated.")
