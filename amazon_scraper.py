@@ -54,7 +54,8 @@ def get_price_and_title(url):
     """Fetch title and current price from an Amazon page (Feb 2026 layout)."""
     if not url or "amazon" not in url.lower():
         return None, None
-
+if i == 2:  # only for first product to avoid spam
+    print(resp.text[:800])
     try:
         resp = requests.get(url, headers=HEADERS, timeout=25)
         resp.raise_for_status()
