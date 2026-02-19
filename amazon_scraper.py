@@ -51,28 +51,33 @@ def clean_price(text: str):
 
 
 def get_price_and_title(url):
-    """Fetch title and price safely from an Amazon URL."""
+    """Fetch title and current price from an Amazon page (Feb 2026 layout)."""
     if not url or "amazon" not in url.lower():
         return None, None
+
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp = requests.get(url, headers=HEADERS, timeout=25)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
+        # ---------- title ----------
         title_tag = soup.find(id="productTitle")
+        title = title_tag.get_text(strip=True) if title_tag else ""
+
+        # ---------- price ----------
+        # Amazon now nests visible prices inside <span class="a-offscreen">£xx.xx</span>
         price_tag = (
-            soup.find("span", id="priceblock_ourprice")
-            or soup.find("span", id="priceblock_dealprice")
-            or soup.select_one("span.a-price span.a-offscreen")
+            soup.select_one("span.a-price.aok-align-center span.a-offscreen")  # product boxes
+            or soup.select_one("span.a-price.aok-align-center > span.a-offscreen")
+            or soup.select_one("span[data-a-color='base'] span.a-offscreen")
+            or soup.select_one("span.a-price > span.a-offscreen")
         )
 
-        title = title_tag.get_text(strip=True) if title_tag else ""
         price = clean_price(price_tag.get_text()) if price_tag else None
-
         return title, price
 
     except Exception as e:
-        print(f"⚠️  Error scraping {url[:60]}: {e}")
+        print(f"⚠️ Error scraping {url[:70]} → {e}")
         return None, None
 
 
